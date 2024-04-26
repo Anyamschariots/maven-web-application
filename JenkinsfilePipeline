@@ -1,0 +1,41 @@
+node {
+    def mavenHome = tool name: 'maven3.9.6'
+ 
+    stage('1 Clone Code') {
+        git 'https://github.com/Anyamschariots/maven-web-application'
+    }
+ 
+    stage('2 Test & Build') {
+        sh "${mavenHome}/bin/mvn clean package"
+    }
+ 
+    stage('3 Code Quality') {
+        sh "${mavenHome}/bin/mvn sonar:sonar"
+    }
+ 
+    stage('4 Upload Artifacts') {
+        sh "${mavenHome}/bin/mvn deploy"
+    }
+ 
+    stage('5 Deploy to UAT') {
+	sh "echo 'Deploy to UAT'"
+       deploy adapters: [tomcat9(credentialsId: 'jenkinsuser', path: '', url: 'http://35.183.45.84:8177/')], contextPath: null, war: 'target/*war'
+    }
+ 
+    stage('6 Approval Gate') {
+        sh "echo 'Ready for review'"
+        timeout(time: 5, unit: 'DAYS') {
+            input message: 'Application ready for deployment, please review and approve'
+        }
+    }
+ 
+    stage('7 Deploy to Prod') {
+        deploy adapters: [tomcat9(credentialsId: 'jenkinsuser', path: '', url: 'http://35.183.45.84:8177/')], contextPath: null, war: 'target/*war'
+    }
+ 
+    stage('8 Email Notification') {
+        emailext body: 'Feel free to review', recipientProviders: [contributor()], subject: 'Pipeline inprogress', to: 'ucheda8reat@gmail.com'
+    }
+}
+// The above script can be reused in different similar pipeline projects
+ 
